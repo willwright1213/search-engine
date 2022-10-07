@@ -1,4 +1,4 @@
 class Host < ApplicationRecord
-  has_many :paths
+  has_many :pages
   validates :name, uniqueness: true
 end

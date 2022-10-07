@@ -18,18 +18,17 @@ ActiveRecord::Schema[7.0].define(version: 2022_10_03_223819) do
     t.string "name"
   end
 
-  create_table "links", force: :cascade do |t|
-    t.bigint "path_id"
-    t.string "name"
-    t.index ["path_id"], name: "index_links_on_path_id"
+  create_table "links", primary_key: ["page_id", "link_to"], force: :cascade do |t|
+    t.bigint "page_id", null: false
+    t.integer "link_to", null: false
+    t.index ["page_id"], name: "index_links_on_page_id"
   end
 
-  create_table "paths", force: :cascade do |t|
+  create_table "pages", force: :cascade do |t|
     t.bigint "host_id"
     t.string "name"
-    t.index ["host_id"], name: "index_paths_on_host_id"
+    t.index ["host_id"], name: "index_pages_on_host_id"
   end
 
-  add_foreign_key "links", "paths"
-  add_foreign_key "paths", "hosts"
+  add_foreign_key "pages", "hosts"
 end
