@@ -6,5 +6,5 @@ Rails.application.routes.draw do
   post '/crawl', to: "crawlers#crawl"
   get '/populars', to: "populars#index"
   get '/page/:id', to: "populars#show"
-
+  get '/query', to: "populars#query"
 end

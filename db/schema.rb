@@ -10,12 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2022_10_03_223819) do
+ActiveRecord::Schema[7.0].define(version: 2022_10_14_172220) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
   create_table "hosts", force: :cascade do |t|
     t.string "name"
+  end
+
+  create_table "indices", force: :cascade do |t|
+    t.bigint "word_id"
+    t.bigint "page_id"
+    t.integer "frequency"
+    t.index ["page_id"], name: "index_indices_on_page_id"
+    t.index ["word_id", "page_id"], name: "word_page_id", unique: true
+    t.index ["word_id"], name: "index_indices_on_word_id"
   end
 
   create_table "links", primary_key: ["page_id", "link_to"], force: :cascade do |t|
@@ -28,6 +37,10 @@ ActiveRecord::Schema[7.0].define(version: 2022_10_03_223819) do
     t.bigint "host_id"
     t.string "name"
     t.index ["host_id"], name: "index_pages_on_host_id"
+  end
+
+  create_table "words", force: :cascade do |t|
+    t.string "token"
   end
 
   add_foreign_key "pages", "hosts"
