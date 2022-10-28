@@ -1,0 +1,17 @@
+<Title> Searching </title>
+<p>
+<%= form_with url: '/query', method: :get do |form| %>
+  <%= form.text_field :q %>
+  <%= form.submit "submit" %>
+<% end %>
+</p>
+<% unless @sites.nil? %>
+<% @sites.each do |site| %>
+  <p>
+  --------------------------------------
+  <p>score: <%= site[:score]%></p>
+  <p>Website: <%= site[:website]%></p>
+  <p>Title: <%= site[:title] %></p>
+  </p>
+<% end %>
+<% end %>

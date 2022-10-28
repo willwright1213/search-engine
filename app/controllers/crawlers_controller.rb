@@ -24,10 +24,9 @@ class CrawlersController < ApplicationController
       end
       Nokogiri::HTML(body).xpath("//title").each do |p|
         words = p.content.split
-        words_tally = words.tally
-        words_tally.each do |word, count|
-          @word = Word.find_or_create_by(token: word)
-          Index.create(word_id: @word.id, page_id: @page.id, frequency: count)
+        words.each do |word|
+          @page.title = word
+          @page.save
         end
       end
         

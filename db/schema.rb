@@ -36,6 +36,7 @@ ActiveRecord::Schema[7.0].define(version: 2022_10_14_172220) do
   create_table "pages", force: :cascade do |t|
     t.bigint "host_id"
     t.string "name"
+    t.string "title"
     t.index ["host_id"], name: "index_pages_on_host_id"
   end
 
