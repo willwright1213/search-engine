@@ -25,12 +25,11 @@ class PopularsController < ApplicationController
     m2 = ((1-alpha) * m)
     m2 = m2 + m_alpha
 
-    stability_vector = Matrix.row_vector(Array.new(n) {1/n})
-    stability_vector[0, 0] = 1
+    stability_vector = Matrix.row_vector(Array.new(n) {|_i| 1.0/n})
 
     d1 = stability_vector.row(0).magnitude * m2.row(0).magnitude
     diff = 1
-    until diff < 0.0000001
+    until diff < 0.00001
       stability_vector = stability_vector * m2
       d2 = stability_vector.row(0).magnitude * m2.row(0).magnitude
       diff = (d1 - d2).abs
