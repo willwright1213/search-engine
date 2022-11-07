@@ -5,6 +5,7 @@ class CrawlersController < ApplicationController
   protect_from_forgery with: :null_session
   def crawl
 
+    return
     stop_words = Set.new
 
     #load stopwords list
@@ -12,10 +13,16 @@ class CrawlersController < ApplicationController
       stop_words.add(line)
     end
 
-    crawlers = CoolCrawler::CrawlerPool.new(params[:root], 10, 0.01, 1000)
+    crawlers = CoolCrawler::CrawlerPool.new(params[:root], 10, 0.01, params[:lim].to_i)
     website = crawlers.site
 
     link_map = {}
+    tags = unless params[:tags].nil?
+             params[:tags].split
+           else
+             ["//p", "//h1", "//h2", "//h3", "//title", "//meta[@name]"]
+           end
+    tag_lim = params[:tag_lim].to_i
 
     @host = Host.find_or_create_by(name: website)
     callback = Proc.new { |page, links, body|
@@ -23,33 +30,57 @@ class CrawlersController < ApplicationController
       @page = Page.find_or_create_by(host_id: @host.id, name: page)
       @page.title = doc.title
       @page.save
-      link_map[@page.id] = links
-      doc.xpath("//p").each do |p|
-        words = p.content.split
-        words.each_index do |i|
-          word = /[a-zA-Z]+'?[a-zA-Z]*/.match(words[i])
-          unless word.nil?
-            nouns = WordNet::Synset.morphy(word[0], 'noun')
-            verbs = WordNet::Synset.morphy(word[0], 'verb')
-            if nouns.size > 0
-              words[i] = nouns[0]
-            elsif verbs.size > 0
-              words[i] = verbs[0]
-            else
-              words[i] = nil
-            end
-          else
-            words[i] = nil
-          end
+      link_map[@page.id] = []
+      links.each do |link|
+        in_page = Page.find_by(host_id: @host.id, name: link)
+        unless in_page.nil?
+          @page.links.create(link_to: in_page.id)
+        else
+          link_map[@page.id].push(link)
         end
-        words_tally = words.tally
-        words_tally.each do |word, count|
-          next if word.nil?
-          next if stop_words.include?(word.downcase) || word.size < 2
+      end
 
-          @word = Word.find_or_create_by(token: word.downcase)
-          Index.find_or_create_by(word_id: @word.id, page_id: @page.id, frequency: count)
+      word_bank = {}
+
+      tags.each do |tag|
+        tag_count = 0
+        doc.css(tag).each do |x|
+          break if tag_count == tag_lim
+         
+          words = []
+          if tag == "meta[@name]"
+            next unless x['name'] == 'keywords' || x['name'] == 'description'
+            words = x['content'].split
+          else
+            words = x.content.split.slice(0,35)
+          end
+
+          words.each_index do |i|
+            words[i] = /^[a-zA-Z]+/.match(words[i])
+            next if words[i].nil?
+            
+            lemm = WordNet::Synset.morphy_all(words[i][0].downcase)
+            if lemm.size > 0
+              words[i] = lemm[0]
+            else
+              words[i] = words[i][0].downcase
+            end
+            if word_bank.include?(words[i])
+              word_bank[words[i]] += 1
+            else
+              word_bank[words[i]] = 1
+            end
+          end
+          tag_count += 1
         end
+      end
+      word_bank.each do |word, count|
+        next if stop_words.include?(word) || word.size < 3
+
+        @word = Word.find_or_create_by(token: word)
+        index = Index.find_or_create_by(word_id: @word.id, page_id: @page.id)
+        index.frequency = count
+        index.save
       end
     }
 
@@ -57,11 +88,10 @@ class CrawlersController < ApplicationController
     crawlers.run
 
     link_map.each do |page,links|
-      @page = Page.find(page)
       links.each do |link|
         @in_page = Page.find_by(host_id: @host.id, name: link)
         unless @in_page.nil?
-          @in_page.links.create(link_to: @page.id)
+          Link.create(page_id: page, link_to: @in_page.id)
         end
       end
     end
@@ -73,7 +103,6 @@ class CrawlersController < ApplicationController
   def pagerank
     host = Host.find(params[:id])
     n = host.pages.count
-    puts n
     alpha = 0.1
     m = Matrix.zero(n)
     m_alpha = Matrix.build(n) { alpha/n.to_f }
@@ -97,13 +126,12 @@ class CrawlersController < ApplicationController
 
     d1 = stability_vector.row(0).magnitude * m2.row(0).magnitude
     diff = 1
-    until diff < 0.000001
+    until diff < 0.0001
       stability_vector = stability_vector * m2
       d2 = stability_vector.row(0).magnitude * m2.row(0).magnitude
       diff = (d1 - d2).abs
       d1 = d2
     end
-
 
     #update page rank score
     n.times do |i|
